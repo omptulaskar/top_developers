@@ -1,52 +1,57 @@
 package com.TradingPlatform.top_developers.filters;
 
-import org.springframework.web.filter.OncePerRequestFilter;
-import com.TradingPlatform.top_developers.services.CustomUserDetailsService;
+
 import com.TradingPlatform.top_developers.utils.JwtUtil;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Nullable;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
-
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
+
 
 @Component
 public class JwtFilter extends OncePerRequestFilter {
-    @Autowired
-    private JwtUtil jwtUtil;
+    private final JwtUtil jwtUtil;
+    private final UserDetailsService userDetailsService;
 
-    @Autowired
-    private CustomUserDetailsService userDetailsService;
+    public JwtFilter(JwtUtil jwtUtil, UserDetailsService userDetailsService) {
+        this.jwtUtil = jwtUtil;
+        this.userDetailsService = userDetailsService;
+    }
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(@Nullable jakarta.servlet.http.HttpServletRequest request, @Nullable jakarta.servlet.http.HttpServletResponse response, @Nullable jakarta.servlet.FilterChain filterChain) throws jakarta.servlet.ServletException, IOException {
+
+        // Extract the JWT token from the Authorization header
+        assert request != null;
         String authorizationHeader = request.getHeader("Authorization");
-
         String token = null;
         String username = null;
 
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            token = authorizationHeader.substring(7);
-            username = jwtUtil.extractUsername(token);
+            token = authorizationHeader.substring(7); // Remove "Bearer " prefix
+            username = jwtUtil.extractUsername(token); // Extract username from token
         }
 
+        // Validate the token and set the authentication in the context
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-            if (jwtUtil.validateToken(token, userDetails.getUsername())) {
-                // Set the authenticated user
-                // Add logic here to authenticate with Spring Security
+            if (jwtUtil.validateToken(token, username)) {
+                // Correct method call
+                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                UsernamePasswordAuthenticationToken authenticationToken =
+                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
             }
         }
+
+        // Continue the filter chain
+        assert filterChain != null;
         filterChain.doFilter(request, response);
     }
 
-    @Override
-    protected void doFilterInternal(jakarta.servlet.http.HttpServletRequest request, jakarta.servlet.http.HttpServletResponse response, jakarta.servlet.FilterChain filterChain) throws ServletException, IOException {
-
-    }
 }
 

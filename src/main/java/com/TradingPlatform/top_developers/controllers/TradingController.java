@@ -1,6 +1,7 @@
 package com.TradingPlatform.top_developers.controllers;
 
 
+import com.TradingPlatform.top_developers.models.Transactions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import com.TradingPlatform.top_developers.services.TradingService;
@@ -22,7 +23,8 @@ public class TradingController {
 
         Map<String, Object> response = new HashMap<>();
         try {
-            boolean success = tradingService.executeTrade(stockSymbol, quantity, type);
+            Transactions transactions = new Transactions();
+            boolean success = tradingService.executeTrade(stockSymbol, quantity, type, stockSymbol, transactions);
             response.put("success", success);
         } catch (Exception e) {
             response.put("success", false);
